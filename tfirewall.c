@@ -24,7 +24,7 @@ typedef struct {
 } user_fw_rule_t;
 
 typedef struct {
-	user_fw_rule_t	user;
+	user_fw_rule_t	u;
 	int active;
 } fw_rule_t;
 
@@ -51,10 +51,10 @@ my_hook(void *ptr, struct sk_buff *skb, const struct nf_hook_state *state) {
 	char *i_dst = (char*)&iph->daddr;
 
 	fw_each_rule(&fw, r) if (r->active) {
-		if ((!r->src_ip || mask(r->src_ip, iph->saddr, r->src_mask)) &&
-			(!r->dst_ip || mask(r->dst_ip, iph->daddr, r->dst_mask)))
+		if (	(!r->u.src_ip || mask(r->u.src_ip, iph->saddr, r->u.src_mask)) &&
+			(!r->u.dst_ip || mask(r->u.dst_ip, iph->daddr, r->u.dst_mask)))
 		{
-			switch (r->act) {
+			switch (r->u.act) {
 				case FWActDeny:		return NF_DROP;
 				case FWActAllow:	return NF_ACCEPT;
 				default:
@@ -80,7 +80,7 @@ int tfw_open(struct inode *inode, struct file *f) {
 long tfw_ioctl(struct file *f, unsigned int cmd, unsigned long arg) {
 	fw_rule_t rule = { .active=1 };
 	void __user *argp = (void __user*)arg;
-	copy_from_user(&rule.user, argp, sizeof(user_fw_rule_t));
+	copy_from_user(&rule.u, argp, sizeof(user_fw_rule_t));
 
 	switch (cmd) {
 		case TFW_ADD_RULE:
@@ -97,7 +97,7 @@ long tfw_ioctl(struct file *f, unsigned int cmd, unsigned long arg) {
 		case TFW_DEL_RULE:
 		{
 			fw_each_rule(&fw, r) if (r->active)
-				if (!memcmp(&r->user, &rule.user, sizeof(user_fw_rule_t)))
+				if (!memcmp(&r->u, &rule.u, sizeof(user_fw_rule_t)))
 					r->active = 0;			
 		}
 		break;
